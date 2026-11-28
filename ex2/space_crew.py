@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ValidationError
 from datetime import datetime
 from typing_extensions import Self
 from enum import Enum
@@ -44,4 +44,82 @@ class SpaceMission(BaseModel):
             raise ValueError(
                 "Mission must have at least one Commander or Captain"
             )
+        experienced: int = sum(
+            1 for member in self.crew if member.years_experience >= 5
+        )
+        if (
+            experienced * 2 < len(self.crew) and self.duration_days > 365
+        ):
+            raise ValueError(
+                "Long missions need 50% experienced crew (5+ years)"
+            )
         return self
+
+
+def main() -> None:
+    print("Space Mission Crew Validation")
+    print("=" * 41)
+    crew_member1 = CrewMember(
+        member_id="scnrc1",
+        name="Sarah Connor",
+        rank=Rank.COMMANDER,
+        age=31,
+        specialization="Mission Command",
+        years_experience=8,
+    )
+    crew_member2 = CrewMember(
+        member_id="jsmtc2",
+        name="John Smith",
+        rank=Rank.LIEUTENANT,
+        age=47,
+        specialization="Navigation",
+        years_experience=26,
+    )
+    crew_member3 = CrewMember(
+        member_id="ajnsnc3",
+        name="Alice Johnson",
+        rank=Rank.OFFICER,
+        age=23,
+        specialization="Engineering",
+        years_experience=2,
+    )
+    mission = SpaceMission(
+        mission_id="M2024_MARS",
+        mission_name="Mars Colony Establishment",
+        destination="Mars",
+        launch_date=datetime(2024, 12, 12),
+        duration_days=900,
+        crew=[crew_member1, crew_member2, crew_member3],
+        budget_millions=2500.0
+    )
+    print("Valid mission created:")
+    print(f"Mission: {mission.mission_name}")
+    print(f"ID: {mission.mission_id}")
+    print(f"Destination: {mission.destination}")
+    print(f"Duration: {mission.duration_days} days")
+    print(f"Budget: ${mission.budget_millions}M")
+    print(f"Crew size: {len(mission.crew)}")
+    print("Crew members:")
+    for member in mission.crew:
+        print(
+            f"- {member.name} ({member.rank.value}) - {member.specialization}"
+        )
+    print()
+    print("=" * 41)
+    print("Expected validation error:")
+    try:
+        SpaceMission(
+            mission_id="M2024_MARS",
+            mission_name="Mars Colony Establishment",
+            destination="Mars",
+            launch_date=datetime(2024, 12, 12),
+            duration_days=100,
+            crew=[crew_member2, crew_member3],
+            budget_millions=2500.0
+        )
+    except ValidationError as e:
+        print(e.errors()[0]["msg"])
+
+
+if __name__ == "__main__":
+    main()
